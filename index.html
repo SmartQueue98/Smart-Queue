@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="X-Content-Type-Options" content="nosniff">
+<meta http-equiv="X-Frame-Options" content="DENY">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
+<title>Smart Queue – Transforming Hospital Appointments</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Syne:wght@700;800&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Tamil:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --card: #141d2e;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --accent3: #10b981;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --border: rgba(0,229,255,0.12);
+    --glow: 0 0 40px rgba(0,229,255,0.15);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    overflow-x: hidden;
+    cursor: none;
+  }
+
+  /* CUSTOM CURSOR */
+  .cursor { position: fixed; width: 12px; height: 12px; background: var(--accent); border-radius: 50%; pointer-events: none; z-index: 9999; transform: translate(-50%,-50%); transition: transform 0.1s, width 0.2s, height 0.2s, background 0.2s; mix-blend-mode: screen; }
+  .cursor-ring { position: fixed; width: 36px; height: 36px; border: 1.5px solid var(--accent); border-radius: 50%; pointer-events: none; z-index: 9998; transform: translate(-50%,-50%); transition: all 0.15s ease; opacity: 0.5; }
+
+  /* NAV */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 3rem;
+    background: rgba(10,15,30,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .nav-logo { font-family: 'Syne', sans-serif; font-size: 1.4rem; color: var(--accent); letter-spacing: -0.5px; }
+  .nav-logo span { color: #fff; }
+  .nav-links { display: flex; gap: 2rem; list-style: none; }
+  .nav-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--accent); }
+  .lang-switcher { display: flex; gap: 0.5rem; }
+  .lang-btn { background: var(--surface); border: 1px solid var(--border); color: var(--muted); padding: 0.35rem 0.8rem; border-radius: 20px; font-size: 0.78rem; cursor: pointer; font-family: 'Space Grotesk', sans-serif; transition: all 0.2s; }
+  .lang-btn:hover, .lang-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: ''; position: fixed; inset: 0; z-index: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none; opacity: 0.4;
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; text-align: center; padding: 6rem 2rem 4rem;
+  }
+  .hero-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 80% 60% at 50% 30%, rgba(0,229,255,0.07) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 40% at 80% 80%, rgba(124,58,237,0.08) 0%, transparent 60%);
+  }
+  .grid-lines {
+    position: absolute; inset: 0; z-index: 0;
+    background-image: linear-gradient(rgba(0,229,255,0.04) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(0,229,255,0.04) 1px, transparent 1px);
+    background-size: 60px 60px;
+    mask-image: radial-gradient(ellipse at center, black 20%, transparent 80%);
+  }
+  .hero-content { position: relative; z-index: 1; max-width: 900px; }
+  .hero-tag {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    background: rgba(0,229,255,0.08); border: 1px solid var(--border);
+    padding: 0.4rem 1rem; border-radius: 30px; font-size: 0.78rem;
+    color: var(--accent); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 1.5rem;
+    animation: fadeUp 0.6s 0.2s both;
+  }
+  .hero-tag::before { content: '●'; font-size: 0.5rem; animation: pulse 1.5s infinite; }
+  .hero-title {
+    font-family: 'Syne', sans-serif; font-size: clamp(3rem, 8vw, 6.5rem);
+    font-weight: 800; line-height: 1; letter-spacing: -0.03em;
+    animation: fadeUp 0.6s 0.3s both;
+  }
+  .hero-title .line1 { display: block; color: #fff; }
+  .hero-title .accent-text {
+    display: block; color: transparent;
+    -webkit-text-stroke: 2px var(--accent);
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .hero-sub {
+    margin-top: 1.5rem; font-size: 1.1rem; color: var(--muted); max-width: 560px; margin-inline: auto;
+    line-height: 1.7; animation: fadeUp 0.6s 0.4s both;
+  }
+  .hero-cta { display: flex; gap: 1rem; justify-content: center; margin-top: 2.5rem; flex-wrap: wrap; animation: fadeUp 0.6s 0.5s both; }
+  .btn-primary {
+    background: var(--accent); color: #000; font-weight: 700; padding: 0.9rem 2rem;
+    border-radius: 8px; border: none; font-size: 0.95rem; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.02em;
+    transition: all 0.2s; box-shadow: 0 0 30px rgba(0,229,255,0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 50px rgba(0,229,255,0.5); }
+  .btn-ghost {
+    background: transparent; color: var(--text); padding: 0.9rem 2rem;
+    border-radius: 8px; border: 1px solid var(--border); font-size: 0.95rem; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; transition: all 0.2s;
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* FLOATING PARTICLES */
+  .particles { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
+  .particle {
+    position: absolute; width: 2px; height: 2px; background: var(--accent);
+    border-radius: 50%; opacity: 0; animation: floatUp var(--dur) var(--delay) infinite;
+  }
+
+  /* STATS STRIP */
+  .stats-strip {
+    background: var(--surface); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    padding: 2rem 3rem; display: flex; justify-content: center; gap: 5rem; flex-wrap: wrap;
+  }
+  .stat-item { text-align: center; }
+  .stat-num { font-family: 'Syne', sans-serif; font-size: 2.5rem; font-weight: 800; color: var(--accent); }
+  .stat-label { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 0.2rem; }
+
+  /* SECTIONS */
+  section { padding: 6rem 2rem; position: relative; }
+  .section-inner { max-width: 1100px; margin: 0 auto; }
+  .section-tag { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; color: var(--accent); margin-bottom: 1rem; font-weight: 600; }
+  .section-title { font-family: 'Syne', sans-serif; font-size: clamp(2rem, 4vw, 3rem); font-weight: 800; line-height: 1.1; margin-bottom: 1rem; }
+  .section-sub { color: var(--muted); font-size: 1rem; line-height: 1.7; max-width: 550px; margin-bottom: 3rem; }
+
+  /* PROBLEM CARDS */
+  .problem-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; }
+  .problem-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .problem-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(135deg, rgba(0,229,255,0.04) 0%, transparent 60%);
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .problem-card:hover { transform: translateY(-4px); border-color: rgba(0,229,255,0.3); box-shadow: var(--glow); }
+  .problem-card:hover::before { opacity: 1; }
+  .card-icon { font-size: 2.5rem; margin-bottom: 1rem; display: block; }
+  .card-title { font-family: 'Syne', sans-serif; font-size: 1.2rem; font-weight: 700; margin-bottom: 0.7rem; }
+  .card-text { color: var(--muted); font-size: 0.9rem; line-height: 1.7; }
+  .card-stat { margin-top: 1rem; font-size: 2rem; font-weight: 800; font-family: 'Syne', sans-serif; color: #ef4444; }
+
+  /* HOW IT WORKS */
+  .how-section { background: var(--surface); }
+  .flow-container { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; margin-top: 3rem; }
+  .flow-side { }
+  .flow-label { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 1.5rem; font-weight: 600; }
+  .flow-steps { display: flex; flex-direction: column; gap: 1rem; }
+  .flow-step {
+    display: flex; align-items: center; gap: 1rem;
+    background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 1rem 1.5rem;
+    transition: all 0.3s; animation: slideIn 0.5s both;
+  }
+  .flow-step:hover { border-color: var(--accent); background: rgba(0,229,255,0.05); transform: translateX(6px); }
+  .step-num { width: 32px; height: 32px; border-radius: 50%; background: rgba(0,229,255,0.1); border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--accent); flex-shrink: 0; }
+  .step-text { font-size: 0.9rem; color: var(--text); }
+
+  /* SOLUTION */
+  .solution-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3rem; align-items: center; }
+  .solution-visual {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2rem;
+    position: relative; overflow: hidden;
+  }
+  .solution-visual::after {
+    content: ''; position: absolute; top: -50%; right: -50%; width: 100%; height: 100%;
+    background: radial-gradient(circle, rgba(0,229,255,0.08) 0%, transparent 70%);
+    animation: rotateSlow 8s linear infinite;
+  }
+  .mock-screen { background: var(--bg); border-radius: 12px; padding: 1.5rem; border: 1px solid var(--border); }
+  .mock-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem; }
+  .mock-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .mock-title { font-size: 0.8rem; color: var(--muted); margin-left: auto; }
+  .mock-search {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 0.6rem 1rem;
+    font-size: 0.8rem; color: var(--muted); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem;
+  }
+  .mock-doctor-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 0.8rem 1rem;
+    display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.5rem; transition: all 0.2s;
+  }
+  .mock-doctor-card:hover { border-color: var(--accent); }
+  .mock-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--accent2), var(--accent)); display: flex; align-items: center; justify-content: center; font-size: 0.9rem; flex-shrink: 0; }
+  .mock-doc-name { font-size: 0.82rem; font-weight: 600; }
+  .mock-doc-spec { font-size: 0.72rem; color: var(--muted); }
+  .mock-avail { margin-left: auto; font-size: 0.7rem; color: var(--accent3); font-weight: 600; }
+  .mock-book-btn {
+    margin-top: 1rem; width: 100%; background: var(--accent); color: #000;
+    border: none; border-radius: 8px; padding: 0.7rem; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif; animation: buttonPulse 2s infinite;
+  }
+
+  /* FEATURES */
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem; }
+  .feature-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 1.8rem;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .feature-card::before {
+    content: ''; position: absolute; bottom: 0; left: 0; height: 3px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0; transition: width 0.3s;
+  }
+  .feature-card:hover::before { width: 100%; }
+  .feature-card:hover { transform: translateY(-4px); border-color: rgba(0,229,255,0.2); }
+  .feature-icon { font-size: 2rem; margin-bottom: 1rem; }
+  .feature-title { font-family: 'Syne', sans-serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .feature-text { color: var(--muted); font-size: 0.85rem; line-height: 1.7; }
+
+  /* TIMELINE */
+  .timeline-section { background: var(--surface); }
+  .timeline { display: flex; align-items: flex-start; gap: 0; margin-top: 3rem; position: relative; }
+  .timeline::before {
+    content: ''; position: absolute; top: 24px; left: 5%; right: 5%; height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2), var(--accent3), var(--accent));
+    z-index: 0;
+  }
+  .timeline-item { flex: 1; text-align: center; position: relative; z-index: 1; padding: 0 0.5rem; }
+  .timeline-dot {
+    width: 48px; height: 48px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem; font-family: 'Syne', sans-serif; font-weight: 800; font-size: 0.9rem; color: var(--accent);
+    position: relative; transition: all 0.3s;
+  }
+  .timeline-item:hover .timeline-dot { background: var(--accent); color: #000; box-shadow: 0 0 20px rgba(0,229,255,0.5); }
+  .timeline-phase { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 0.5rem; }
+  .timeline-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.5; }
+
+  /* SECURITY */
+  .security-section { }
+  .security-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.2rem; }
+  .security-card {
+    background: var(--card); border: 1px solid rgba(16,185,129,0.2); border-radius: 12px; padding: 1.5rem;
+    display: flex; flex-direction: column; gap: 0.8rem; transition: all 0.3s;
+  }
+  .security-card:hover { border-color: var(--accent3); transform: translateY(-3px); box-shadow: 0 0 25px rgba(16,185,129,0.1); }
+  .security-icon { font-size: 1.8rem; }
+  .security-title { font-weight: 700; font-size: 0.95rem; color: var(--accent3); }
+  .security-text { font-size: 0.82rem; color: var(--muted); line-height: 1.6; }
+  .security-badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3);
+    color: var(--accent3); font-size: 0.68rem; padding: 0.2rem 0.6rem; border-radius: 20px; width: fit-content;
+  }
+
+  /* METRICS */
+  .metrics-section { background: var(--surface); }
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+  .metric-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 2rem 1.5rem; text-align: center;
+    transition: all 0.3s; position: relative; overflow: hidden;
+  }
+  .metric-card::before {
+    content: ''; position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 0%, rgba(0,229,255,0.06) 0%, transparent 70%);
+  }
+  .metric-card:hover { transform: translateY(-4px); border-color: var(--accent); box-shadow: var(--glow); }
+  .metric-num { font-family: 'Syne', sans-serif; font-size: 2.8rem; font-weight: 800; color: var(--accent); display: block; }
+  .metric-text { font-size: 0.85rem; color: var(--muted); margin-top: 0.5rem; line-height: 1.5; }
+
+  /* BOOKING CTA */
+  .cta-section { text-align: center; padding: 8rem 2rem; position: relative; overflow: hidden; }
+  .cta-bg {
+    position: absolute; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse 80% 80% at 50% 50%, rgba(0,229,255,0.06) 0%, transparent 70%),
+                radial-gradient(ellipse 50% 50% at 20% 50%, rgba(124,58,237,0.06) 0%, transparent 60%);
+  }
+  .cta-content { position: relative; z-index: 1; max-width: 700px; margin: 0 auto; }
+  .cta-title { font-family: 'Syne', sans-serif; font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 800; line-height: 1.1; }
+  .cta-sub { color: var(--muted); margin: 1.5rem auto; max-width: 500px; line-height: 1.7; }
+
+  /* BOOKING FORM */
+  .booking-form {
+    background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 2.5rem;
+    max-width: 500px; margin: 2.5rem auto 0; text-align: left;
+  }
+  .form-title { font-family: 'Syne', sans-serif; font-size: 1.3rem; font-weight: 700; margin-bottom: 1.5rem; }
+  .form-group { margin-bottom: 1rem; }
+  .form-label { font-size: 0.8rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 0.4rem; }
+  .form-input {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    padding: 0.75rem 1rem; color: var(--text); font-size: 0.9rem; font-family: 'Space Grotesk', sans-serif;
+    transition: all 0.2s; outline: none;
+  }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,229,255,0.1); }
+  .form-input::placeholder { color: var(--muted); }
+  select.form-input option { background: var(--bg); }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  .captcha-box {
+    background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 1rem;
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;
+  }
+  .captcha-text { font-size: 0.85rem; color: var(--muted); }
+  .captcha-check { display: flex; align-items: center; gap: 0.5rem; cursor: pointer; }
+  .captcha-input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .captcha-label { font-size: 0.85rem; }
+  .rate-limit-info { font-size: 0.72rem; color: var(--muted); text-align: center; margin-top: 0.8rem; }
+  .success-msg { display: none; background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.3); border-radius: 8px; padding: 1rem; text-align: center; color: var(--accent3); font-size: 0.9rem; margin-top: 1rem; }
+
+  /* FOOTER */
+  footer {
+    border-top: 1px solid var(--border); padding: 3rem 3rem 2rem;
+    display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2rem;
+  }
+  .footer-brand .logo { font-family: 'Syne', sans-serif; font-size: 1.4rem; color: var(--accent); margin-bottom: 0.5rem; }
+  .footer-brand p { color: var(--muted); font-size: 0.85rem; max-width: 280px; line-height: 1.6; }
+  .footer-links { }
+  .footer-links h4 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent); margin-bottom: 1rem; }
+  .footer-links ul { list-style: none; display: flex; flex-direction: column; gap: 0.6rem; }
+  .footer-links a { color: var(--muted); text-decoration: none; font-size: 0.85rem; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--accent); }
+  .footer-bottom { border-top: 1px solid var(--border); padding: 1.5rem 3rem; text-align: center; color: var(--muted); font-size: 0.8rem; }
+
+  /* SCROLL INDICATOR */
+  .scroll-progress { position: fixed; top: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--accent), var(--accent2)); z-index: 200; width: 0%; transition: width 0.1s; }
+
+  /* LANGUAGE-SPECIFIC FONT */
+  .lang-hi { font-family: 'Noto Sans Devanagari', 'Space Grotesk', sans-serif; }
+  .lang-ta { font-family: 'Noto Sans Tamil', 'Space Grotesk', sans-serif; }
+
+  /* ANIMATIONS */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+  @keyframes rotateSlow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+  @keyframes buttonPulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.4); } 50% { box-shadow: 0 0 0 8px rgba(0,229,255,0); } }
+  @keyframes floatUp { 0% { opacity: 0; transform: translateY(0) translateX(0); } 10% { opacity: 1; } 90% { opacity: 1; } 100% { opacity: 0; transform: translateY(-300px) translateX(calc(var(--drift) * 60px)); } }
+  @keyframes countUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+
+  .reveal { opacity: 0; transform: translateY(40px); transition: opacity 0.6s ease, transform 0.6s ease; }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  @media (max-width: 768px) {
+    nav { padding: 1rem 1.5rem; }
+    .nav-links { display: none; }
+    .flow-container, .solution-grid, .features-grid, .metrics-grid { grid-template-columns: 1fr; }
+    .timeline { flex-direction: column; align-items: center; }
+    .timeline::before { display: none; }
+    footer { flex-direction: column; padding: 2rem 1.5rem; }
+    .footer-bottom { padding: 1rem 1.5rem; }
+    .form-grid { grid-template-columns: 1fr; }
+    section { padding: 4rem 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SCROLL PROGRESS -->
+<div class="scroll-progress" id="scrollProgress"></div>
+
+<!-- CURSOR -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- NAV -->
+<nav id="nav">
+  <div class="nav-logo"><span>Smart</span>Queue</div>
+  <ul class="nav-links">
+    <li><a href="#problem" data-key="nav_problem">Problem</a></li>
+    <li><a href="#solution" data-key="nav_solution">Solution</a></li>
+    <li><a href="#how" data-key="nav_how">How It Works</a></li>
+    <li><a href="#security" data-key="nav_security">Security</a></li>
+    <li><a href="#book" data-key="nav_book">Book Now</a></li>
+  </ul>
+  <div class="lang-switcher">
+    <button class="lang-btn active" onclick="setLang('en')">EN</button>
+    <button class="lang-btn" onclick="setLang('hi')">हि</button>
+    <button class="lang-btn" onclick="setLang('ta')">த</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero" id="home">
+  <div class="hero-bg"></div>
+  <div class="grid-lines"></div>
+  <div class="particles" id="particles"></div>
+  <div class="hero-content">
+    <div class="hero-tag" data-key="hero_tag">● Presented by Tech Sutra</div>
+    <h1 class="hero-title">
+      <span class="line1" data-key="hero_line1">Smart Queue</span>
+      <span class="accent-text" data-key="hero_line2">Transforming Hospitals</span>
+    </h1>
+    <p class="hero-sub" data-key="hero_sub">A web-based platform eliminating wait times at semi-government hospitals. Book your doctor appointment online — anytime, anywhere.</p>
+    <div class="hero-cta">
+      <button class="btn-primary" onclick="document.getElementById('book').scrollIntoView({behavior:'smooth'})" data-key="hero_cta1">Book Appointment</button>
+      <button class="btn-ghost" onclick="document.getElementById('solution').scrollIntoView({behavior:'smooth'})" data-key="hero_cta2">Learn More</button>
+    </div>
+  </div>
+</section>
+
+<!-- STATS STRIP -->
+<div class="stats-strip reveal">
+  <div class="stat-item">
+    <div class="stat-num" data-count="60">0%</div>
+    <div class="stat-label" data-key="stat1">Patients wait 2+ hours</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" data-count="40">0%</div>
+    <div class="stat-label" data-key="stat2">Equipment unavailable</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" data-count="50">0%</div>
+    <div class="stat-label" data-key="stat3">Target wait reduction</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-num" data-count="80">0%</div>
+    <div class="stat-label" data-key="stat4">Reduce manual handling</div>
+  </div>
+</div>
+
+<!-- PROBLEM SECTION -->
+<section id="problem">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-tag" data-key="problem_tag">The Problem</div>
+      <h2 class="section-title" data-key="problem_title">Key Challenges in Semi-Government Hospitals</h2>
+      <p class="section-sub" data-key="problem_sub">Overcrowding, insufficient doctors, and limited equipment are creating a healthcare crisis that demands urgent digital intervention.</p>
+    </div>
+    <div class="problem-grid">
+      <div class="problem-card reveal">
+        <span class="card-icon">🏥</span>
+        <div class="card-title" data-key="pc1_title">Overcrowding</div>
+        <div class="card-text" data-key="pc1_text">Waiting areas overflow daily, creating unhygienic conditions and heightened anxiety for patients who are already unwell.</div>
+        <div class="card-stat">60%</div>
+      </div>
+      <div class="problem-card reveal">
+        <span class="card-icon">👨‍⚕️</span>
+        <div class="card-title" data-key="pc2_title">Doctor Shortage</div>
+        <div class="card-text" data-key="pc2_text">Insufficient number of doctors leads to rushed consultations, misdiagnoses, and compromised quality of patient care.</div>
+        <div class="card-stat" style="color:#f59e0b">3x</div>
+      </div>
+      <div class="problem-card reveal">
+        <span class="card-icon">🔬</span>
+        <div class="card-title" data-key="pc3_title">Equipment Shortage</div>
+        <div class="card-text" data-key="pc3_text">Essential diagnostic machines are unavailable 40% of the time, forcing patients to make multiple visits for basic tests.</div>
+        <div class="card-stat" style="color:#8b5cf6">40%</div>
+      </div>
+      <div class="problem-card reveal">
+        <span class="card-icon">📋</span>
+        <div class="card-title" data-key="pc4_title">Paperwork Overload</div>
+        <div class="card-text" data-key="pc4_text">Manual appointment handling consumes staff time that should be spent on patient care, with frequent errors and lost records.</div>
+        <div class="card-stat" style="color:#06b6d4">2hrs+</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOLUTION SECTION -->
+<section id="solution" style="background: var(--surface)">
+  <div class="section-inner">
+    <div class="solution-grid">
+      <div class="reveal">
+        <div class="section-tag" data-key="sol_tag">Our Solution</div>
+        <h2 class="section-title" data-key="sol_title">Smart Queue Platform</h2>
+        <p class="section-sub" data-key="sol_sub">A web-based appointment system that connects patients to doctors, eliminating waiting time and transforming healthcare access for millions.</p>
+        <ul style="list-style:none; display:flex; flex-direction:column; gap:0.8rem;">
+          <li style="display:flex;gap:0.8rem;align-items:flex-start">
+            <span style="color:var(--accent);flex-shrink:0;margin-top:2px">✓</span>
+            <span style="font-size:0.9rem;color:var(--muted)" data-key="sol_f1">Online doctor appointment booking — no physical queue</span>
+          </li>
+          <li style="display:flex;gap:0.8rem;align-items:flex-start">
+            <span style="color:var(--accent);flex-shrink:0;margin-top:2px">✓</span>
+            <span style="font-size:0.9rem;color:var(--muted)" data-key="sol_f2">Real-time doctor availability and slot management</span>
+          </li>
+          <li style="display:flex;gap:0.8rem;align-items:flex-start">
+            <span style="color:var(--accent);flex-shrink:0;margin-top:2px">✓</span>
+            <span style="font-size:0.9rem;color:var(--muted)" data-key="sol_f3">Digital queue displays with live wait time estimates</span>
+          </li>
+          <li style="display:flex;gap:0.8rem;align-items:flex-start">
+            <span style="color:var(--accent);flex-shrink:0;margin-top:2px">✓</span>
+            <span style="font-size:0.9rem;color:var(--muted)" data-key="sol_f4">Integrated digital health records — paperwork eliminated</span>
+          </li>
+          <li style="display:flex;gap:0.8rem;align-items:flex-start">
+            <span style="color:var(--accent);flex-shrink:0;margin-top:2px">✓</span>
+            <span style="font-size:0.9rem;color:var(--muted)" data-key="sol_f5">Future integration with ABDM (Ayushman Bharat Digital Mission)</span>
+          </li>
+        </ul>
+      </div>
+      <div class="solution-visual reveal">
+        <div class="mock-screen">
+          <div class="mock-header">
+            <div class="mock-dot" style="background:#ef4444"></div>
+            <div class="mock-dot" style="background:#f59e0b"></div>
+            <div class="mock-dot" style="background:#10b981"></div>
+            <div class="mock-title">SmartQueue Portal</div>
+          </div>
+          <div class="mock-search">
+            <span>🔍</span> <span data-key="mock_search">Search hospital or doctor...</span>
+          </div>
+          <div class="mock-doctor-card">
+            <div class="mock-avatar">👨‍⚕️</div>
+            <div>
+              <div class="mock-doc-name">Dr. Priya Sharma</div>
+              <div class="mock-doc-spec">Cardiologist · City Govt Hospital</div>
+            </div>
+            <div class="mock-avail" data-key="mock_avail">Available Today</div>
+          </div>
+          <div class="mock-doctor-card">
+            <div class="mock-avatar">👩‍⚕️</div>
+            <div>
+              <div class="mock-doc-name">Dr. Ravi Kumar</div>
+              <div class="mock-doc-spec">General Medicine · District Hospital</div>
+            </div>
+            <div class="mock-avail" data-key="mock_avail2">3 slots left</div>
+          </div>
+          <div class="mock-doctor-card">
+            <div class="mock-avatar">🧑‍⚕️</div>
+            <div>
+              <div class="mock-doc-name">Dr. Meera Iyer</div>
+              <div class="mock-doc-spec">Pediatrics · ESI Hospital</div>
+            </div>
+            <div class="mock-avail" data-key="mock_avail3">Tomorrow</div>
+          </div>
+          <button class="mock-book-btn" data-key="mock_btn">Book Appointment →</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="how-section">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-tag" data-key="how_tag">Process</div>
+      <h2 class="section-title" data-key="how_title">How Smart Queue Works</h2>
+      <p class="section-sub" data-key="how_sub">A streamlined two-sided system connecting patients and hospital administrators in real-time.</p>
+    </div>
+    <div class="flow-container">
+      <div class="flow-side reveal">
+        <div class="flow-label" data-key="flow_patient">👤 Patient Journey</div>
+        <div class="flow-steps">
+          <div class="flow-step" style="animation-delay:0.1s"><div class="step-num">1</div><div class="step-text" data-key="flow_p1">Register with mobile number & Aadhaar verification</div></div>
+          <div class="flow-step" style="animation-delay:0.2s"><div class="step-num">2</div><div class="step-text" data-key="flow_p2">Search hospital by location or department</div></div>
+          <div class="flow-step" style="animation-delay:0.3s"><div class="step-num">3</div><div class="step-text" data-key="flow_p3">Select preferred doctor and view available slots</div></div>
+          <div class="flow-step" style="animation-delay:0.4s"><div class="step-num">4</div><div class="step-text" data-key="flow_p4">Book slot — get instant confirmation + token number</div></div>
+          <div class="flow-step" style="animation-delay:0.5s"><div class="step-num">5</div><div class="step-text" data-key="flow_p5">Arrive on time, skip the line, get care faster</div></div>
+        </div>
+      </div>
+      <div class="flow-side reveal">
+        <div class="flow-label" data-key="flow_hospital">🏥 Hospital Admin</div>
+        <div class="flow-steps">
+          <div class="flow-step" style="animation-delay:0.1s"><div class="step-num">A</div><div class="step-text" data-key="flow_h1">Admin sets up hospital profile and departments</div></div>
+          <div class="flow-step" style="animation-delay:0.2s"><div class="step-num">B</div><div class="step-text" data-key="flow_h2">Doctors update availability and working hours</div></div>
+          <div class="flow-step" style="animation-delay:0.3s"><div class="step-num">C</div><div class="step-text" data-key="flow_h3">System auto-confirms and organizes patient queue</div></div>
+          <div class="flow-step" style="animation-delay:0.4s"><div class="step-num">D</div><div class="step-text" data-key="flow_h4">Digital displays show real-time queue status</div></div>
+          <div class="flow-step" style="animation-delay:0.5s"><div class="step-num">E</div><div class="step-text" data-key="flow_h5">Analytics dashboard tracks efficiency metrics</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section style="background:var(--surface)">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-tag" data-key="feat_tag">Features</div>
+      <h2 class="section-title" data-key="feat_title">Everything You Need</h2>
+    </div>
+    <div class="features-grid" style="margin-top:2rem">
+      <div class="feature-card reveal">
+        <div class="feature-icon">📱</div>
+        <div class="feature-title" data-key="f1_t">Mobile-First Design</div>
+        <div class="feature-text" data-key="f1_d">Fully responsive — works on any device, even basic smartphones with slow connections.</div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🔔</div>
+        <div class="feature-title" data-key="f2_t">Smart Notifications</div>
+        <div class="feature-text" data-key="f2_d">SMS and app reminders sent before your appointment so you never miss a slot.</div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🌐</div>
+        <div class="feature-title" data-key="f3_t">Multilingual Support</div>
+        <div class="feature-text" data-key="f3_d">Available in English, Hindi, Tamil, and more regional languages for true accessibility.</div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title" data-key="f4_t">Triage Prioritization</div>
+        <div class="feature-text" data-key="f4_d">AI-based urgency scoring ensures critical patients get priority without gaming the queue.</div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🗂️</div>
+        <div class="feature-title" data-key="f5_t">Digital Health Records</div>
+        <div class="feature-text" data-key="f5_d">Secure, shareable medical history — no more carrying paper files to every appointment.</div>
+      </div>
+      <div class="feature-card reveal">
+        <div class="feature-icon">🔗</div>
+        <div class="feature-title" data-key="f6_t">ABDM Integration</div>
+        <div class="feature-text" data-key="f6_d">Future-ready integration with India's Ayushman Bharat Digital Mission for national coverage.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<section id="timeline" class="timeline-section">
+  <div class="section-inner">
+    <div class="reveal" style="text-align:center;margin-bottom:1rem">
+      <div class="section-tag" data-key="tl_tag">Roadmap</div>
+      <h2 class="section-title" data-key="tl_title">Implementation Timeline</h2>
+    </div>
+    <div class="timeline reveal">
+      <div class="timeline-item">
+        <div class="timeline-dot">P1</div>
+        <div class="timeline-phase" data-key="tl_p1">Phase 1</div>
+        <div class="timeline-desc" data-key="tl_d1">Pilot with 5–10 semi-government hospitals in a single city</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">P2</div>
+        <div class="timeline-phase" data-key="tl_p2">Phase 2</div>
+        <div class="timeline-desc" data-key="tl_d2">Expand to district-level hospitals across the state</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">P3</div>
+        <div class="timeline-phase" data-key="tl_p3">Phase 3</div>
+        <div class="timeline-desc" data-key="tl_d3">State-wide rollout with full digital record integration</div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot">P4</div>
+        <div class="timeline-phase" data-key="tl_p4">Phase 4</div>
+        <div class="timeline-desc" data-key="tl_d4">National integration with ABDM infrastructure</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECURITY -->
+<section id="security">
+  <div class="section-inner">
+    <div class="reveal">
+      <div class="section-tag" data-key="sec_tag">Security & Privacy</div>
+      <h2 class="section-title" data-key="sec_title">Enterprise-Grade Protection</h2>
+      <p class="section-sub" data-key="sec_sub">Your health data is sacred. Smart Queue is built with security-first principles at every layer of the stack.</p>
+    </div>
+    <div class="security-grid">
+      <div class="security-card reveal">
+        <div class="security-icon">🔐</div>
+        <div class="security-title" data-key="sc1_t">AES-256 Encryption</div>
+        <div class="security-text" data-key="sc1_d">All patient records and personal data encrypted at rest and in transit using military-grade AES-256 standard.</div>
+        <div class="security-badge">✓ HIPAA-aligned</div>
+      </div>
+      <div class="security-card reveal">
+        <div class="security-icon">🛡️</div>
+        <div class="security-title" data-key="sc2_t">Multi-Factor Authentication</div>
+        <div class="security-text" data-key="sc2_d">OTP via SMS + Aadhaar biometric verification for all users — patients, doctors, and admins.</div>
+        <div class="security-badge">✓ MFA Enforced</div>
+      </div>
+      <div class="security-card reveal">
+        <div class="security-icon">🔒</div>
+        <div class="security-title" data-key="sc3_t">Role-Based Access</div>
+        <div class="security-text" data-key="sc3_d">Granular permissions ensure patients only see their own data, doctors see assigned patients, admins control scope.</div>
+        <div class="security-badge">✓ RBAC Model</div>
+      </div>
+      <div class="security-card reveal">
+        <div class="security-icon">🌐</div>
+        <div class="security-title" data-key="sc4_t">DDoS & Bot Protection</div>
+        <div class="security-text" data-key="sc4_d">Rate limiting, CAPTCHA, and CDN-based DDoS mitigation prevent abuse and protect appointment fairness.</div>
+        <div class="security-badge">✓ Cloudflare Protected</div>
+      </div>
+      <div class="security-card reveal">
+        <div class="security-icon">📋</div>
+        <div class="security-title" data-key="sc5_t">Audit Logging</div>
+        <div class="security-text" data-key="sc5_d">Every access and modification to patient records is logged with timestamp, IP address, and user ID for full accountability.</div>
+        <div class="security-badge">✓ Immutable Logs</div>
+      </div>
+      <div class="security-card reveal">
+        <div class="security-icon">🔁</div>
+        <div class="security-title" data-key="sc6_t">Automated Backups</div>
+        <div class="security-text" data-key="sc6_d">Daily encrypted backups with 30-day retention across geographically separate servers — zero data loss guaranteed.</div>
+        <div class="security-badge">✓ 99.9% Uptime SLA</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- METRICS -->
+<section class="metrics-section">
+  <div class="section-inner">
+    <div class="reveal" style="text-align:center;margin-bottom:3rem">
+      <div class="section-tag" data-key="met_tag">Success Metrics</div>
+      <h2 class="section-title" data-key="met_title">Targets We're Committed To</h2>
+    </div>
+    <div class="metrics-grid">
+      <div class="metric-card reveal">
+        <span class="metric-num">50%</span>
+        <div class="metric-text" data-key="m1">Reduction in patient waiting time</div>
+      </div>
+      <div class="metric-card reveal">
+        <span class="metric-num">80%</span>
+        <div class="metric-text" data-key="m2">Reduction in manual appointment handling</div>
+      </div>
+      <div class="metric-card reveal">
+        <span class="metric-num">4.5+</span>
+        <div class="metric-text" data-key="m3">Patient satisfaction score out of 5</div>
+      </div>
+      <div class="metric-card reveal">
+        <span class="metric-num">1M+</span>
+        <div class="metric-text" data-key="m4">Monthly active users targeted by Phase 3</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- BOOKING CTA -->
+<section class="cta-section" id="book">
+  <div class="cta-bg"></div>
+  <div class="cta-content">
+    <div class="reveal">
+      <div class="section-tag" data-key="book_tag">Get Started</div>
+      <h2 class="cta-title" data-key="book_title">Skip the Queue.<br>Get Care Faster.</h2>
+      <p class="cta-sub" data-key="book_sub">Book your hospital appointment in under 60 seconds. No waiting room, no paperwork, no stress.</p>
+    </div>
+    <div class="booking-form reveal">
+      <div class="form-title" data-key="form_title">Book an Appointment</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" data-key="fl_name">Full Name</label>
+          <input class="form-input" type="text" id="f_name" placeholder="Arjun Sharma" maxlength="60">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-key="fl_phone">Mobile Number</label>
+          <input class="form-input" type="tel" id="f_phone" placeholder="+91 98765 43210" maxlength="14" pattern="[\+0-9 ]{10,14}">
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="fl_hospital">Select Hospital</label>
+        <select class="form-input" id="f_hospital">
+          <option value="" data-key="fopt_h0">-- Choose Hospital --</option>
+          <option>City Government Hospital, Delhi</option>
+          <option>District Hospital, Saket</option>
+          <option>ESI Hospital, Okhla</option>
+          <option>Safdarjung Hospital</option>
+        </select>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" data-key="fl_dept">Department</label>
+          <select class="form-input" id="f_dept">
+            <option value="" data-key="fopt_d0">-- Department --</option>
+            <option>General Medicine</option>
+            <option>Cardiology</option>
+            <option>Pediatrics</option>
+            <option>Orthopedics</option>
+            <option>ENT</option>
+            <option>Gynecology</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-key="fl_date">Preferred Date</label>
+          <input class="form-input" type="date" id="f_date">
+        </div>
+      </div>
+      <div class="captcha-box">
+        <div class="captcha-check">
+          <input type="checkbox" class="captcha-input" id="captchaCheck">
+          <label class="captcha-label" for="captchaCheck" data-key="captcha_label">I am not a robot</label>
+        </div>
+        <div class="captcha-text">🔒 reCAPTCHA</div>
+      </div>
+      <button class="btn-primary" style="width:100%;justify-content:center" onclick="submitBooking()" id="bookBtn" data-key="form_submit">Confirm Booking →</button>
+      <div class="rate-limit-info" data-key="rate_info">🛡️ Rate limited: Max 3 bookings per hour per device. All data is encrypted.</div>
+      <div class="success-msg" id="successMsg">
+        ✅ <span data-key="success_msg">Booking confirmed! Your token number and appointment details have been sent via SMS.</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">
+    <div class="logo">SmartQueue</div>
+    <p data-key="footer_desc">Transforming healthcare access for millions across India — one appointment at a time.</p>
+    <div style="margin-top:1rem;font-size:0.75rem;color:var(--muted)">
+      🔒 <span data-key="footer_sec">SSL Secured · DPDP Compliant · Data Encrypted</span>
+    </div>
+  </div>
+  <div class="footer-links">
+    <h4 data-key="fl_platform">Platform</h4>
+    <ul>
+      <li><a href="#solution" data-key="fll_1">Our Solution</a></li>
+      <li><a href="#how" data-key="fll_2">How It Works</a></li>
+      <li><a href="#timeline" data-key="fll_3">Roadmap</a></li>
+      <li><a href="#security" data-key="fll_4">Security</a></li>
+    </ul>
+  </div>
+  <div class="footer-links">
+    <h4 data-key="fl_legal">Legal</h4>
+    <ul>
+      <li><a href="#" data-key="fll_5">Privacy Policy</a></li>
+      <li><a href="#" data-key="fll_6">Terms of Service</a></li>
+      <li><a href="#" data-key="fll_7">Data Protection</a></li>
+      <li><a href="#" data-key="fll_8">Accessibility</a></li>
+    </ul>
+  </div>
+  <div class="footer-links">
+    <h4 data-key="fl_contact">Contact</h4>
+    <ul>
+      <li><a href="#">techsutra@smartqueue.in</a></li>
+      <li><a href="#">+91 800 123 4567</a></li>
+      <li><a href="#" data-key="fll_9">Press Kit</a></li>
+    </ul>
+  </div>
+</footer>
+<div class="footer-bottom">
+  <span data-key="footer_copy">© 2024 Smart Queue by Tech Sutra. All rights reserved. Built with ❤️ for India's healthcare.</span>
+</div>
+
+<script>
+// ============================================================
+// TRANSLATIONS
+// ============================================================
+const translations = {
+  en: {
+    hero_tag: '● Presented by Tech Sutra',
+    hero_line1: 'Smart Queue',
+    hero_line2: 'Transforming Hospitals',
+    hero_sub: 'A web-based platform eliminating wait times at semi-government hospitals. Book your doctor appointment online — anytime, anywhere.',
+    hero_cta1: 'Book Appointment',
+    hero_cta2: 'Learn More',
+    stat1: 'Patients wait 2+ hours',
+    stat2: 'Equipment unavailable',
+    stat3: 'Target wait reduction',
+    stat4: 'Reduce manual handling',
+    problem_tag: 'The Problem',
+    problem_title: 'Key Challenges in Semi-Government Hospitals',
+    problem_sub: 'Overcrowding, insufficient doctors, and limited equipment are creating a healthcare crisis that demands urgent digital intervention.',
+    pc1_title: 'Overcrowding', pc1_text: 'Waiting areas overflow daily, creating unhygienic conditions and heightened anxiety for patients who are already unwell.',
+    pc2_title: 'Doctor Shortage', pc2_text: 'Insufficient doctors lead to rushed consultations, misdiagnoses, and compromised quality of patient care.',
+    pc3_title: 'Equipment Shortage', pc3_text: 'Essential diagnostic machines are unavailable 40% of the time, forcing multiple visits for basic tests.',
+    pc4_title: 'Paperwork Overload', pc4_text: 'Manual appointment handling consumes staff time with frequent errors and lost records.',
+    sol_tag: 'Our Solution', sol_title: 'Smart Queue Platform',
+    sol_sub: 'A web-based appointment system connecting patients to doctors, eliminating waiting time and transforming healthcare access.',
+    sol_f1: 'Online doctor appointment booking — no physical queue',
+    sol_f2: 'Real-time doctor availability and slot management',
+    sol_f3: 'Digital queue displays with live wait time estimates',
+    sol_f4: 'Integrated digital health records — paperwork eliminated',
+    sol_f5: 'Future integration with ABDM (Ayushman Bharat Digital Mission)',
+    mock_search: 'Search hospital or doctor...',
+    mock_avail: 'Available Today', mock_avail2: '3 slots left', mock_avail3: 'Tomorrow',
+    mock_btn: 'Book Appointment →',
+    how_tag: 'Process', how_title: 'How Smart Queue Works',
+    how_sub: 'A streamlined two-sided system connecting patients and hospital administrators in real-time.',
+    flow_patient: '👤 Patient Journey', flow_hospital: '🏥 Hospital Admin',
+    flow_p1: 'Register with mobile number & Aadhaar verification',
+    flow_p2: 'Search hospital by location or department',
+    flow_p3: 'Select preferred doctor and view available slots',
+    flow_p4: 'Book slot — get instant confirmation + token number',
+    flow_p5: 'Arrive on time, skip the line, get care faster',
+    flow_h1: 'Admin sets up hospital profile and departments',
+    flow_h2: 'Doctors update availability and working hours',
+    flow_h3: 'System auto-confirms and organizes patient queue',
+    flow_h4: 'Digital displays show real-time queue status',
+    flow_h5: 'Analytics dashboard tracks efficiency metrics',
+    feat_tag: 'Features', feat_title: 'Everything You Need',
+    f1_t: 'Mobile-First Design', f1_d: 'Fully responsive — works on any device, even basic smartphones with slow connections.',
+    f2_t: 'Smart Notifications', f2_d: 'SMS and app reminders sent before your appointment so you never miss a slot.',
+    f3_t: 'Multilingual Support', f3_d: 'Available in English, Hindi, Tamil, and more regional languages for true accessibility.',
+    f4_t: 'Triage Prioritization', f4_d: 'AI-based urgency scoring ensures critical patients get priority.',
+    f5_t: 'Digital Health Records', f5_d: 'Secure, shareable medical history — no more carrying paper files.',
+    f6_t: 'ABDM Integration', f6_d: 'Future-ready integration with India\'s Ayushman Bharat Digital Mission.',
+    tl_tag: 'Roadmap', tl_title: 'Implementation Timeline',
+    tl_p1: 'Phase 1', tl_d1: 'Pilot with 5–10 semi-government hospitals in a single city',
+    tl_p2: 'Phase 2', tl_d2: 'Expand to district-level hospitals across the state',
+    tl_p3: 'Phase 3', tl_d3: 'State-wide rollout with full digital record integration',
+    tl_p4: 'Phase 4', tl_d4: 'National integration with ABDM infrastructure',
+    sec_tag: 'Security & Privacy', sec_title: 'Enterprise-Grade Protection',
+    sec_sub: 'Your health data is sacred. Smart Queue is built with security-first principles at every layer.',
+    sc1_t: 'AES-256 Encryption', sc1_d: 'All patient records encrypted at rest and in transit.',
+    sc2_t: 'Multi-Factor Authentication', sc2_d: 'OTP via SMS + Aadhaar biometric verification for all users.',
+    sc3_t: 'Role-Based Access', sc3_d: 'Granular permissions ensure data privacy at every level.',
+    sc4_t: 'DDoS & Bot Protection', sc4_d: 'Rate limiting, CAPTCHA, and CDN mitigation prevent abuse.',
+    sc5_t: 'Audit Logging', sc5_d: 'Every data access logged with timestamp, IP, and user ID.',
+    sc6_t: 'Automated Backups', sc6_d: 'Daily encrypted backups across geographically separate servers.',
+    met_tag: 'Success Metrics', met_title: 'Targets We\'re Committed To',
+    m1: 'Reduction in patient waiting time', m2: 'Reduction in manual appointment handling',
+    m3: 'Patient satisfaction score out of 5', m4: 'Monthly active users targeted by Phase 3',
+    book_tag: 'Get Started', book_title: 'Skip the Queue.\nGet Care Faster.',
+    book_sub: 'Book your hospital appointment in under 60 seconds. No waiting room, no paperwork, no stress.',
+    form_title: 'Book an Appointment',
+    fl_name: 'Full Name', fl_phone: 'Mobile Number', fl_hospital: 'Select Hospital',
+    fl_dept: 'Department', fl_date: 'Preferred Date',
+    fopt_h0: '-- Choose Hospital --', fopt_d0: '-- Department --',
+    captcha_label: 'I am not a robot',
+    form_submit: 'Confirm Booking →',
+    rate_info: '🛡️ Rate limited: Max 3 bookings per hour per device. All data is encrypted.',
+    success_msg: 'Booking confirmed! Your token number and appointment details have been sent via SMS.',
+    nav_problem: 'Problem', nav_solution: 'Solution', nav_how: 'How It Works',
+    nav_security: 'Security', nav_book: 'Book Now',
+    footer_desc: 'Transforming healthcare access for millions across India — one appointment at a time.',
+    footer_sec: 'SSL Secured · DPDP Compliant · Data Encrypted',
+    fl_platform: 'Platform', fl_legal: 'Legal', fl_contact: 'Contact',
+    fll_1: 'Our Solution', fll_2: 'How It Works', fll_3: 'Roadmap', fll_4: 'Security',
+    fll_5: 'Privacy Policy', fll_6: 'Terms of Service', fll_7: 'Data Protection', fll_8: 'Accessibility', fll_9: 'Press Kit',
+    footer_copy: '© 2024 Smart Queue by Tech Sutra. All rights reserved. Built with ❤️ for India\'s healthcare.',
+  },
+  hi: {
+    hero_tag: '● टेक सूत्र द्वारा प्रस्तुत',
+    hero_line1: 'स्मार्ट क्यू',
+    hero_line2: 'अस्पतालों को बदलना',
+    hero_sub: 'एक वेब-आधारित प्लेटफ़ॉर्म जो सरकारी अस्पतालों में प्रतीक्षा समय समाप्त करता है। ऑनलाइन डॉक्टर अपॉइंटमेंट बुक करें — कभी भी, कहीं भी।',
+    hero_cta1: 'अपॉइंटमेंट बुक करें', hero_cta2: 'और जानें',
+    stat1: 'मरीज़ 2+ घंटे प्रतीक्षा करते हैं', stat2: 'उपकरण अनुपलब्ध', stat3: 'प्रतीक्षा में कमी का लक्ष्य', stat4: 'मैन्युअल काम में कमी',
+    problem_tag: 'समस्या', problem_title: 'सरकारी अस्पतालों में मुख्य चुनौतियाँ',
+    problem_sub: 'भीड़भाड़, अपर्याप्त डॉक्टर और सीमित उपकरण एक स्वास्थ्य संकट पैदा कर रहे हैं।',
+    pc1_title: 'भीड़भाड़', pc1_text: 'प्रतीक्षा क्षेत्र रोज़ाना भरे रहते हैं जिससे बीमार मरीज़ों में चिंता बढ़ती है।',
+    pc2_title: 'डॉक्टरों की कमी', pc2_text: 'अपर्याप्त डॉक्टर जल्दबाज़ी में परामर्श देते हैं जिससे गलत निदान होता है।',
+    pc3_title: 'उपकरणों की कमी', pc3_text: '40% समय आवश्यक निदान मशीनें उपलब्ध नहीं होतीं।',
+    pc4_title: 'कागज़ी काम का बोझ', pc4_text: 'मैन्युअल अपॉइंटमेंट प्रबंधन में बार-बार त्रुटियाँ होती हैं।',
+    sol_tag: 'हमारा समाधान', sol_title: 'स्मार्ट क्यू प्लेटफ़ॉर्म',
+    sol_sub: 'एक वेब-आधारित अपॉइंटमेंट प्रणाली जो मरीज़ों को डॉक्टरों से जोड़ती है।',
+    sol_f1: 'ऑनलाइन अपॉइंटमेंट — लाइन में खड़े होने की ज़रूरत नहीं',
+    sol_f2: 'रियल-टाइम डॉक्टर उपलब्धता और स्लॉट प्रबंधन',
+    sol_f3: 'डिजिटल क्यू डिस्प्ले के साथ लाइव प्रतीक्षा समय',
+    sol_f4: 'एकीकृत डिजिटल स्वास्थ्य रिकॉर्ड — कागज़ी काम खत्म',
+    sol_f5: 'ABDM के साथ भविष्य का एकीकरण',
+    mock_search: 'अस्पताल या डॉक्टर खोजें...',
+    mock_avail: 'आज उपलब्ध', mock_avail2: '3 स्लॉट बचे हैं', mock_avail3: 'कल',
+    mock_btn: 'अपॉइंटमेंट बुक करें →',
+    how_tag: 'प्रक्रिया', how_title: 'स्मार्ट क्यू कैसे काम करता है',
+    how_sub: 'एक सुव्यवस्थित दो-तरफ़ा प्रणाली जो मरीज़ों और अस्पताल प्रशासकों को जोड़ती है।',
+    flow_patient: '👤 मरीज़ की यात्रा', flow_hospital: '🏥 अस्पताल प्रशासन',
+    flow_p1: 'मोबाइल नंबर और आधार से पंजीकरण करें',
+    flow_p2: 'स्थान या विभाग से अस्पताल खोजें',
+    flow_p3: 'पसंदीदा डॉक्टर चुनें और उपलब्ध स्लॉट देखें',
+    flow_p4: 'स्लॉट बुक करें — तुरंत पुष्टि + टोकन नंबर पाएं',
+    flow_p5: 'समय पर पहुँचें, लाइन छोड़ें, जल्दी देखभाल पाएं',
+    flow_h1: 'एडमिन अस्पताल प्रोफ़ाइल और विभाग सेट करता है',
+    flow_h2: 'डॉक्टर उपलब्धता और कार्य समय अपडेट करते हैं',
+    flow_h3: 'सिस्टम स्वचालित रूप से मरीज़ की क्यू व्यवस्थित करता है',
+    flow_h4: 'डिजिटल डिस्प्ले रियल-टाइम क्यू स्थिति दिखाते हैं',
+    flow_h5: 'एनालिटिक्स डैशबोर्ड दक्षता मेट्रिक्स ट्रैक करता है',
+    feat_tag: 'सुविधाएँ', feat_title: 'जो कुछ भी आपको चाहिए',
+    f1_t: 'मोबाइल-फर्स्ट डिज़ाइन', f1_d: 'किसी भी डिवाइस पर काम करता है, धीमे इंटरनेट पर भी।',
+    f2_t: 'स्मार्ट सूचनाएं', f2_d: 'अपॉइंटमेंट से पहले SMS और ऐप रिमाइंडर मिलते हैं।',
+    f3_t: 'बहुभाषी समर्थन', f3_d: 'हिंदी, तमिल, अंग्रेज़ी और कई क्षेत्रीय भाषाओं में उपलब्ध।',
+    f4_t: 'ट्राइएज प्राथमिकता', f4_d: 'AI आधारित तात्कालिकता स्कोरिंग गंभीर मरीज़ों को प्राथमिकता देती है।',
+    f5_t: 'डिजिटल स्वास्थ्य रिकॉर्ड', f5_d: 'सुरक्षित, साझा करने योग्य चिकित्सा इतिहास।',
+    f6_t: 'ABDM एकीकरण', f6_d: 'आयुष्मान भारत डिजिटल मिशन के साथ भविष्य का एकीकरण।',
+    tl_tag: 'रोडमैप', tl_title: 'कार्यान्वयन समयरेखा',
+    tl_p1: 'चरण 1', tl_d1: 'एक शहर के 5-10 अस्पतालों के साथ पायलट',
+    tl_p2: 'चरण 2', tl_d2: 'जिला-स्तरीय अस्पतालों तक विस्तार',
+    tl_p3: 'चरण 3', tl_d3: 'पूरे राज्य में लागू',
+    tl_p4: 'चरण 4', tl_d4: 'ABDM के साथ राष्ट्रीय एकीकरण',
+    sec_tag: 'सुरक्षा और गोपनीयता', sec_title: 'एंटरप्राइज़-ग्रेड सुरक्षा',
+    sec_sub: 'आपका स्वास्थ्य डेटा पवित्र है। स्मार्ट क्यू सुरक्षा-प्रथम सिद्धांतों पर बनाया गया है।',
+    sc1_t: 'AES-256 एन्क्रिप्शन', sc1_d: 'सभी मरीज़ रिकॉर्ड आराम और पारगमन में एन्क्रिप्टेड।',
+    sc2_t: 'मल्टी-फैक्टर प्रमाणीकरण', sc2_d: 'SMS के माध्यम से OTP + आधार बायोमेट्रिक सत्यापन।',
+    sc3_t: 'भूमिका-आधारित पहुँच', sc3_d: 'सूक्ष्म अनुमतियाँ हर स्तर पर डेटा गोपनीयता सुनिश्चित करती हैं।',
+    sc4_t: 'DDoS और बॉट सुरक्षा', sc4_d: 'रेट लिमिटिंग, CAPTCHA और CDN से दुरुपयोग रोका जाता है।',
+    sc5_t: 'ऑडिट लॉगिंग', sc5_d: 'हर डेटा एक्सेस टाइमस्टैम्प, IP और यूज़र ID के साथ लॉग।',
+    sc6_t: 'स्वचालित बैकअप', sc6_d: 'भौगोलिक रूप से अलग सर्वरों पर दैनिक एन्क्रिप्टेड बैकअप।',
+    met_tag: 'सफलता मेट्रिक्स', met_title: 'जिन लक्ष्यों के लिए हम प्रतिबद्ध हैं',
+    m1: 'मरीज़ प्रतीक्षा समय में कमी', m2: 'मैन्युअल अपॉइंटमेंट में कमी',
+    m3: 'मरीज़ संतुष्टि स्कोर 5 में से', m4: 'चरण 3 तक मासिक सक्रिय उपयोगकर्ता',
+    book_tag: 'शुरू करें', book_title: 'लाइन छोड़ें।\nजल्दी इलाज पाएं।',
+    book_sub: '60 सेकंड में अस्पताल अपॉइंटमेंट बुक करें। कोई प्रतीक्षा कक्ष नहीं, कोई कागज़ी काम नहीं।',
+    form_title: 'अपॉइंटमेंट बुक करें',
+    fl_name: 'पूरा नाम', fl_phone: 'मोबाइल नंबर', fl_hospital: 'अस्पताल चुनें',
+    fl_dept: 'विभाग', fl_date: 'पसंदीदा तारीख',
+    fopt_h0: '-- अस्पताल चुनें --', fopt_d0: '-- विभाग --',
+    captcha_label: 'मैं रोबोट नहीं हूँ',
+    form_submit: 'बुकिंग कन्फर्म करें →',
+    rate_info: '🛡️ रेट सीमित: प्रति घंटे अधिकतम 3 बुकिंग। सभी डेटा एन्क्रिप्टेड है।',
+    success_msg: 'बुकिंग कन्फर्म! आपका टोकन नंबर और अपॉइंटमेंट विवरण SMS द्वारा भेजा गया है।',
+    nav_problem: 'समस्या', nav_solution: 'समाधान', nav_how: 'कैसे काम करता है',
+    nav_security: 'सुरक्षा', nav_book: 'अभी बुक करें',
+    footer_desc: 'भारत भर में लाखों लोगों के लिए स्वास्थ्य सेवा की पहुँच बदलना।',
+    footer_sec: 'SSL सुरक्षित · DPDP अनुपालित · डेटा एन्क्रिप्टेड',
+    fl_platform: 'प्लेटफ़ॉर्म', fl_legal: 'कानूनी', fl_contact: 'संपर्क',
+    fll_1: 'हमारा समाधान', fll_2: 'कैसे काम करता है', fll_3: 'रोडमैप', fll_4: 'सुरक्षा',
+    fll_5: 'गोपनीयता नीति', fll_6: 'सेवा की शर्तें', fll_7: 'डेटा संरक्षण', fll_8: 'अभिगम्यता', fll_9: 'प्रेस किट',
+    footer_copy: '© 2024 स्मार्ट क्यू, टेक सूत्र द्वारा। सर्वाधिकार सुरक्षित।',
+  },
+  ta: {
+    hero_tag: '● டெக் சூத்ரா வழங்குகிறது',
+    hero_line1: 'ஸ்மார்ட் க்யூ',
+    hero_line2: 'மருத்துவமனைகளை மாற்றுதல்',
+    hero_sub: 'அரை அரசு மருத்துவமனைகளில் காத்திருப்பு நேரத்தை நீக்கும் வலை-அடிப்படையிலான தளம். ஆன்லைனில் மருத்துவர் சந்திப்பை பதிவு செய்யுங்கள்.',
+    hero_cta1: 'சந்திப்பை பதிவு செய்', hero_cta2: 'மேலும் அறிக',
+    stat1: 'நோயாளிகள் 2+ மணி நேரம் காத்திருக்கிறார்கள்', stat2: 'உபகரணங்கள் கிடைக்கவில்லை', stat3: 'காத்திருப்பு குறைப்பு இலக்கு', stat4: 'கையேடு கையாளுதல் குறைப்பு',
+    problem_tag: 'சிக்கல்', problem_title: 'அரை அரசு மருத்துவமனைகளில் முக்கிய சவால்கள்',
+    problem_sub: 'நெரிசல், போதுமான மருத்துவர்கள் இல்லாமை மற்றும் வரையறுக்கப்பட்ட உபகரணங்கள் சுகாதார நெருக்கடியை உருவாக்குகின்றன.',
+    pc1_title: 'நெரிசல்', pc1_text: 'காத்திருப்பு பகுதிகள் தினமும் நிரம்பி வழிகின்றன, நோயாளிகளுக்கு கவலையை அதிகரிக்கின்றன.',
+    pc2_title: 'மருத்துவர் பற்றாக்குறை', pc2_text: 'போதுமான மருத்துவர்கள் இல்லாமையால் அவசரகால ஆலோசனைகள் தவறான நோயறிதலுக்கு வழிவகுக்கின்றன.',
+    pc3_title: 'உபகரண பற்றாக்குறை', pc3_text: '40% நேரம் முக்கியமான நோயறிதல் இயந்திரங்கள் கிடைக்கவில்லை.',
+    pc4_title: 'காகித வேலை சுமை', pc4_text: 'கையேடு சந்திப்பு கையாளுதல் அடிக்கடி பிழைகளுடன் பணியாளர் நேரத்தை வீணடிக்கிறது.',
+    sol_tag: 'எங்கள் தீர்வு', sol_title: 'ஸ்மார்ட் க்யூ தளம்',
+    sol_sub: 'நோயாளிகளை மருத்துவர்களுடன் இணைக்கும் வலை-அடிப்படையிலான சந்திப்பு அமைப்பு.',
+    sol_f1: 'ஆன்லைன் மருத்துவர் சந்திப்பு பதிவு — நேரில் வரிசை தேவையில்லை',
+    sol_f2: 'நிகழ்நேர மருத்துவர் கிடைக்கும் தன்மை மற்றும் ஸ்லாட் மேலாண்மை',
+    sol_f3: 'நேரடி காத்திருப்பு நேர மதிப்பீடுகளுடன் டிஜிட்டல் க்யூ காட்சிகள்',
+    sol_f4: 'ஒருங்கிணைந்த டிஜிட்டல் சுகாதார பதிவுகள் — காகித வேலை நீக்கப்பட்டது',
+    sol_f5: 'ABDM உடன் எதிர்கால ஒருங்கிணைப்பு',
+    mock_search: 'மருத்துவமனை அல்லது மருத்துவரை தேடுங்கள்...',
+    mock_avail: 'இன்று கிடைக்கும்', mock_avail2: '3 ஸ்லாட்கள் மட்டுமே', mock_avail3: 'நாளை',
+    mock_btn: 'சந்திப்பை பதிவு செய் →',
+    how_tag: 'செயல்முறை', how_title: 'ஸ்மார்ட் க்யூ எப்படி வேலை செய்கிறது',
+    how_sub: 'நோயாளிகளையும் மருத்துவமனை நிர்வாகிகளையும் நிகழ்நேரத்தில் இணைக்கும் ஒழுங்கமைக்கப்பட்ட இரு-பக்க அமைப்பு.',
+    flow_patient: '👤 நோயாளி பயணம்', flow_hospital: '🏥 மருத்துவமனை நிர்வாகம்',
+    flow_p1: 'மொபைல் எண் மற்றும் ஆதார் சரிபார்ப்புடன் பதிவு செய்யுங்கள்',
+    flow_p2: 'இடம் அல்லது துறை மூலம் மருத்துவமனை தேடுங்கள்',
+    flow_p3: 'விருப்பமான மருத்துவரை தேர்ந்தெடுத்து கிடைக்கும் ஸ்லாட்களை பாருங்கள்',
+    flow_p4: 'ஸ்லாட் பதிவு செய்யுங்கள் — உடனடி உறுதிப்படுத்தல் + டோக்கன் எண் பெறுங்கள்',
+    flow_p5: 'சரியான நேரத்தில் வாருங்கள், வரிசையை தவிர்த்து, வேகமாக சிகிச்சை பெறுங்கள்',
+    flow_h1: 'நிர்வாகி மருத்துவமனை சுயவிவரம் மற்றும் துறைகளை அமைக்கிறார்',
+    flow_h2: 'மருத்துவர்கள் கிடைக்கும் தன்மை மற்றும் வேலை நேரங்களை புதுப்பிக்கிறார்கள்',
+    flow_h3: 'அமைப்பு தானாக நோயாளி வரிசையை உறுதிப்படுத்தி ஒழுங்கமைக்கிறது',
+    flow_h4: 'டிஜிட்டல் காட்சிகள் நிகழ்நேர வரிசை நிலையை காட்டுகின்றன',
+    flow_h5: 'பகுப்பாய்வு டாஷ்போர்டு செயல்திறன் அளவீடுகளை கண்காணிக்கிறது',
+    feat_tag: 'அம்சங்கள்', feat_title: 'உங்களுக்கு தேவையான அனைத்தும்',
+    f1_t: 'மொபைல்-ஃபர்ஸ்ட் வடிவமைப்பு', f1_d: 'எந்த சாதனத்திலும் செயல்படும், மெதுவான இணைப்புகளிலும் கூட.',
+    f2_t: 'ஸ்மார்ட் அறிவிப்புகள்', f2_d: 'சந்திப்புக்கு முன் SMS மற்றும் ஆப் நினைவூட்டல்கள்.',
+    f3_t: 'பல மொழி ஆதரவு', f3_d: 'ஆங்கிலம், இந்தி, தமிழ் மற்றும் பல மாநில மொழிகளில் கிடைக்கும்.',
+    f4_t: 'ட்ரியாஜ் முன்னுரிமை', f4_d: 'AI அடிப்படையிலான அவசரகால மதிப்பெண்ணிடல் அவசர நோயாளிகளுக்கு முன்னுரிமை அளிக்கிறது.',
+    f5_t: 'டிஜிட்டல் சுகாதார பதிவுகள்', f5_d: 'பாதுகாப்பான, பகிரக்கூடிய மருத்துவ வரலாறு.',
+    f6_t: 'ABDM ஒருங்கிணைப்பு', f6_d: 'ஆயுஷ்மான் பாரத் டிஜிட்டல் மிஷனுடன் எதிர்கால ஒருங்கிணைப்பு.',
+    tl_tag: 'சாலை வரைபடம்', tl_title: 'செயல்படுத்தல் காலவரிசை',
+    tl_p1: 'கட்டம் 1', tl_d1: 'ஒரு நகரத்தில் 5-10 மருத்துவமனைகளுடன் சோதனை',
+    tl_p2: 'கட்டம் 2', tl_d2: 'மாவட்ட அளவிலான மருத்துவமனைகளுக்கு விரிவாக்கம்',
+    tl_p3: 'கட்டம் 3', tl_d3: 'மாநில அளவிலான செயல்படுத்தல்',
+    tl_p4: 'கட்டம் 4', tl_d4: 'ABDM உடன் தேசிய ஒருங்கிணைப்பு',
+    sec_tag: 'பாதுகாப்பு & தனியுரிமை', sec_title: 'நிறுவன தர பாதுகாப்பு',
+    sec_sub: 'உங்கள் சுகாதார தரவு புனிதமானது. ஸ்மார்ட் க்யூ ஒவ்வொரு அடுக்கிலும் பாதுகாப்பு-முதல் கொள்கைகளுடன் கட்டப்பட்டுள்ளது.',
+    sc1_t: 'AES-256 குறியாக்கம்', sc1_d: 'அனைத்து நோயாளி பதிவுகளும் ஓய்வில் மற்றும் போக்குவரத்தில் குறியாக்கப்பட்டவை.',
+    sc2_t: 'பல-காரணி அங்கீகாரம்', sc2_d: 'SMS வழியாக OTP + ஆதார் பயோமெட்ரிக் சரிபார்ப்பு.',
+    sc3_t: 'பங்கு அடிப்படையிலான அணுகல்', sc3_d: 'நுணுக்கமான அனுமதிகள் ஒவ்வொரு மட்டத்திலும் தரவு தனியுரிமையை உறுதிசெய்கின்றன.',
+    sc4_t: 'DDoS & போட் பாதுகாப்பு', sc4_d: 'வீதம் கட்டுப்படுத்துதல், CAPTCHA மற்றும் CDN தணிப்பு.',
+    sc5_t: 'தணிக்கை பதிவு', sc5_d: 'ஒவ்வொரு தரவு அணுகலும் நேர முத்திரை, IP மற்றும் பயனர் ID உடன் பதிவு செய்யப்படுகிறது.',
+    sc6_t: 'தானியங்கி காப்புப்பிரதிகள்', sc6_d: 'புவியியல் ரீதியாக தனித்தனி சேவையகங்களில் தினசரி குறியாக்கப்பட்ட காப்புப்பிரதிகள்.',
+    met_tag: 'வெற்றி அளவீடுகள்', met_title: 'நாங்கள் உறுதிபூண்ட இலக்குகள்',
+    m1: 'நோயாளி காத்திருப்பு நேரத்தில் குறைப்பு', m2: 'கையேடு சந்திப்பு கையாளுதலில் குறைப்பு',
+    m3: '5 இல் நோயாளி திருப்தி மதிப்பெண்', m4: 'கட்டம் 3 இல் மாதாந்திர செயலில் உள்ள பயனர்கள்',
+    book_tag: 'தொடங்குங்கள்', book_title: 'வரிசையை தவிர்க்கவும்.\nவேகமாக சிகிச்சை பெறுங்கள்.',
+    book_sub: '60 வினாடிகளில் மருத்துவமனை சந்திப்பை பதிவு செய்யுங்கள். காத்திருப்பு அறை இல்லை, காகித வேலை இல்லை.',
+    form_title: 'சந்திப்பை பதிவு செய்யுங்கள்',
+    fl_name: 'முழு பெயர்', fl_phone: 'மொபைல் எண்', fl_hospital: 'மருத்துவமனை தேர்ந்தெடுக்கவும்',
+    fl_dept: 'துறை', fl_date: 'விரும்பிய தேதி',
+    fopt_h0: '-- மருத்துவமனை தேர்ந்தெடுக்கவும் --', fopt_d0: '-- துறை --',
+    captcha_label: 'நான் ரோபோ அல்ல',
+    form_submit: 'பதிவை உறுதிப்படுத்துக →',
+    rate_info: '🛡️ வீதம் கட்டுப்படுத்தப்பட்டது: ஒரு மணி நேரத்திற்கு அதிகபட்சம் 3 பதிவுகள். அனைத்து தரவும் குறியாக்கப்பட்டவை.',
+    success_msg: 'பதிவு உறுதிப்படுத்தப்பட்டது! உங்கள் டோக்கன் எண் மற்றும் சந்திப்பு விவரங்கள் SMS வழியாக அனுப்பப்பட்டன.',
+    nav_problem: 'சிக்கல்', nav_solution: 'தீர்வு', nav_how: 'எப்படி வேலை செய்கிறது',
+    nav_security: 'பாதுகாப்பு', nav_book: 'இப்போது பதிவு செய்',
+    footer_desc: 'இந்தியா முழுவதும் லட்சக்கணக்கானவர்களுக்கு சுகாதார அணுகலை மாற்றுதல்.',
+    footer_sec: 'SSL பாதுகாக்கப்பட்டது · DPDP இணக்கமான · தரவு குறியாக்கப்பட்டது',
+    fl_platform: 'தளம்', fl_legal: 'சட்டம்', fl_contact: 'தொடர்பு',
+    fll_1: 'எங்கள் தீர்வு', fll_2: 'எப்படி வேலை செய்கிறது', fll_3: 'சாலை வரைபடம்', fll_4: 'பாதுகாப்பு',
+    fll_5: 'தனியுரிமை கொள்கை', fll_6: 'சேவை விதிமுறைகள்', fll_7: 'தரவு பாதுகாப்பு', fll_8: 'அணுகல்தன்மை', fll_9: 'பத்திரிகை தொகுப்பு',
+    footer_copy: '© 2024 ஸ்மார்ட் க்யூ, டெக் சூத்ரா வழங்கும். அனைத்து உரிமைகளும் பாதுகாக்கப்பட்டவை.',
+  }
+};
+
+let currentLang = 'en';
+
+function setLang(lang) {
+  currentLang = lang;
+  const t = translations[lang];
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const key = el.getAttribute('data-key');
+    if (t[key] !== undefined) {
+      if (el.tagName === 'INPUT' && el.hasAttribute('placeholder')) {
+        // handled separately
+      } else {
+        el.textContent = t[key];
+      }
+    }
+  });
+
+  // Handle multiline book title
+  if (t.book_title) {
+    const el = document.querySelector('.cta-title');
+    if (el) el.innerHTML = t.book_title.replace('\n', '<br>');
+  }
+
+  // Update lang buttons
+  document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+  document.querySelector(`.lang-btn[onclick="setLang('${lang}')"]`).classList.add('active');
+
+  // Apply font class
+  document.body.className = lang === 'hi' ? 'lang-hi' : lang === 'ta' ? 'lang-ta' : '';
+  document.body.style.cursor = 'none';
+}
+
+// ============================================================
+// CURSOR
+// ============================================================
+const cursor = document.getElementById('cursor');
+const cursorRing = document.getElementById('cursorRing');
+let mouseX = 0, mouseY = 0, ringX = 0, ringY = 0;
+
+document.addEventListener('mousemove', e => {
+  mouseX = e.clientX; mouseY = e.clientY;
+  cursor.style.left = mouseX + 'px';
+  cursor.style.top = mouseY + 'px';
+});
+
+function animateCursor() {
+  ringX += (mouseX - ringX) * 0.1;
+  ringY += (mouseY - ringY) * 0.1;
+  cursorRing.style.left = ringX + 'px';
+  cursorRing.style.top = ringY + 'px';
+  requestAnimationFrame(animateCursor);
+}
+animateCursor();
+
+document.querySelectorAll('a, button, .problem-card, .feature-card, .security-card').forEach(el => {
+  el.addEventListener('mouseenter', () => {
+    cursor.style.width = '20px'; cursor.style.height = '20px';
+    cursorRing.style.width = '50px'; cursorRing.style.height = '50px'; cursorRing.style.opacity = '0.8';
+  });
+  el.addEventListener('mouseleave', () => {
+    cursor.style.width = '12px'; cursor.style.height = '12px';
+    cursorRing.style.width = '36px'; cursorRing.style.height = '36px'; cursorRing.style.opacity = '0.5';
+  });
+});
+
+// ============================================================
+// PARTICLES
+// ============================================================
+const pc = document.getElementById('particles');
+for (let i = 0; i < 30; i++) {
+  const p = document.createElement('div');
+  p.className = 'particle';
+  p.style.cssText = `left:${Math.random()*100}%;bottom:${Math.random()*30}%;--dur:${4+Math.random()*6}s;--delay:${Math.random()*6}s;--drift:${(Math.random()-0.5)*2}`;
+  pc.appendChild(p);
+}
+
+// ============================================================
+// SCROLL PROGRESS
+// ============================================================
+window.addEventListener('scroll', () => {
+  const scrollTop = window.scrollY;
+  const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+  document.getElementById('scrollProgress').style.width = (scrollTop / docHeight * 100) + '%';
+});
+
+// ============================================================
+// REVEAL ON SCROLL
+// ============================================================
+const reveals = document.querySelectorAll('.reveal');
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach((entry, i) => {
+    if (entry.isIntersecting) {
+      setTimeout(() => entry.target.classList.add('visible'), i * 80);
+    }
+  });
+}, { threshold: 0.1 });
+reveals.forEach(r => observer.observe(r));
+
+// ============================================================
+// COUNT-UP ANIMATION
+// ============================================================
+const statNums = document.querySelectorAll('[data-count]');
+const countObserver = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const target = parseInt(el.getAttribute('data-count'));
+      let current = 0;
+      const inc = target / 50;
+      const timer = setInterval(() => {
+        current += inc;
+        if (current >= target) { current = target; clearInterval(timer); }
+        el.textContent = Math.floor(current) + '%';
+      }, 30);
+      countObserver.unobserve(el);
+    }
+  });
+}, { threshold: 0.5 });
+statNums.forEach(n => countObserver.observe(n));
+
+// ============================================================
+// RATE LIMITING (client-side demo)
+// ============================================================
+let bookingAttempts = 0;
+let lastReset = Date.now();
+
+function submitBooking() {
+  const now = Date.now();
+  if (now - lastReset > 3600000) { bookingAttempts = 0; lastReset = now; }
+  if (bookingAttempts >= 3) {
+    alert(currentLang === 'hi' ? 'दर सीमा पार हो गई। 1 घंटे बाद पुनः प्रयास करें।' :
+          currentLang === 'ta' ? 'வீத வரம்பு மீறப்பட்டது. 1 மணி நேரம் கழித்து மீண்டும் முயற்சிக்கவும்.' :
+          'Rate limit exceeded. Please try again in 1 hour.');
+    return;
+  }
+  const name = document.getElementById('f_name').value.trim();
+  const phone = document.getElementById('f_phone').value.trim();
+  const hospital = document.getElementById('f_hospital').value;
+  const dept = document.getElementById('f_dept').value;
+  const date = document.getElementById('f_date').value;
+  const captcha = document.getElementById('captchaCheck').checked;
+
+  // Input sanitization
+  const sanitize = s => s.replace(/[<>"'&]/g, '');
+  if (!sanitize(name) || !sanitize(phone) || !hospital || !dept || !date || !captcha) {
+    const msg = currentLang === 'hi' ? 'कृपया सभी फ़ील्ड भरें और CAPTCHA सत्यापित करें।' :
+                currentLang === 'ta' ? 'அனைத்து புலங்களையும் நிரப்பி CAPTCHA ஐ சரிபார்க்கவும்.' :
+                'Please fill all fields and verify CAPTCHA.';
+    alert(msg);
+    return;
+  }
+  if (!/^[\+0-9 ]{10,14}$/.test(phone)) {
+    alert('Please enter a valid mobile number.');
+    return;
+  }
+
+  bookingAttempts++;
+  const btn = document.getElementById('bookBtn');
+  btn.textContent = '⏳ Processing...';
+  btn.disabled = true;
+
+  setTimeout(() => {
+    btn.textContent = translations[currentLang].form_submit || 'Confirm Booking →';
+    btn.disabled = false;
+    document.getElementById('successMsg').style.display = 'block';
+    document.getElementById('successMsg').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    // Clear form
+    ['f_name','f_phone','f_date'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('f_hospital').value = '';
+    document.getElementById('f_dept').value = '';
+    document.getElementById('captchaCheck').checked = false;
+  }, 1500);
+}
+
+// ============================================================
+// DATE MIN
+// ============================================================
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('f_date').min = today;
+});
+
+// ============================================================
+// NAV SCROLL EFFECT
+// ============================================================
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('nav');
+  if (window.scrollY > 80) {
+    nav.style.background = 'rgba(10,15,30,0.97)';
+    nav.style.boxShadow = '0 4px 30px rgba(0,0,0,0.4)';
+  } else {
+    nav.style.background = 'rgba(10,15,30,0.85)';
+    nav.style.boxShadow = 'none';
+  }
+});
+</script>
+</body>
+</html>
